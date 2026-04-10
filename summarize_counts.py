@@ -75,6 +75,13 @@ def read_and_aggregate(
         reader = csv.DictReader(f)
         require_columns(filepath, reader.fieldnames, REQUIRED_COLUMNS)
         for row_num, row in enumerate(reader, start=2):
+            bulk_tpm_raw = row["BulkTPM"].strip()
+            if not bulk_tpm_raw:
+                print(
+                    f"INFO: Skipping row {row_num} (empty BulkTPM).",
+                    file=sys.stderr,
+                )
+                continue
             key: GroupKey = (row["Sample"], row["AdapterGene"])
             groups[key].append(row)
             row_indices[key].append(row_num)
