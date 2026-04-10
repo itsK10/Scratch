@@ -132,13 +132,26 @@ def run_regression_and_plot(
     all_tpm = np.array([float(r["BulkTPM"]) for r in results])
     all_reads = np.array([float(r["SumReads"]) for r in results])
 
-    mask = all_tpm < 1000
-    fit_tpm = all_tpm[mask]
-    fit_reads = all_reads[mask]
+    # For log-scale plotting, only include points where both values are > 0.
+    plot_mask = (all_tpm > 0) & (all_reads > 0)
+    plot_tpm = all_tpm[plot_mask]
+    plot_reads = all_reads[plot_mask]
+    n_skipped = int(np.sum(~plot_mask))
+    if n_skipped:
+        print(
+            f"INFO: Skipping {n_skipped} data point(s) with BulkTPM <= 0 or "
+            f"SumReads <= 0 (cannot take log10).",
+            file=sys.stderr,
+        )
+
+    # Regression subset: BulkTPM < 1000 AND both values > 0.
+    fit_mask = (all_tpm > 0) & (all_reads > 0) & (all_tpm < 1000)
+    fit_tpm = all_tpm[fit_mask]
+    fit_reads = all_reads[fit_mask]
 
     if len(fit_tpm) < 2:
         print(
-            "WARNING: Not enough data points with BulkTPM < 1000 for regression.",
+            "WARNING: Not enough valid data points with BulkTPM < 1000 for regression.",
             file=sys.stderr,
         )
         return
@@ -165,9 +178,9 @@ def run_regression_and_plot(
 
     fig, ax = plt.subplots(figsize=(10, 7))
 
-    ax.scatter(all_tpm, all_reads, alpha=0.6, edgecolors="k", linewidths=0.5, label="All data")
+    ax.scatter(plot_tpm, plot_reads, alpha=0.6, edgecolors="k", linewidths=0.5, label="All data")
 
-    x_line = np.linspace(fit_tpm.min(), 1000, 200)
+    x_line = np.linspace(max(fit_tpm.min(), 1e-10), 1000, 200)
     y_line = 10 ** (slope * np.log10(x_line) + intercept)
     ax.plot(x_line, y_line, color="blue", linewidth=2, label="Regression (BulkTPM < 1000)")
 
